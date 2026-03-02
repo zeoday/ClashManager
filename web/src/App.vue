@@ -5,51 +5,55 @@
   <!-- 其他页面显示完整的主布局 -->
   <div v-else class="app-container">
     <el-container style="height: 100vh;">
-      <el-aside width="220px">
+      <el-aside width="240px">
         <div class="logo">
-          <el-icon><svg viewBox="0 0 1024 1024" width="32" height="32"><path fill="currentColor" d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"></path><path fill="currentColor" d="M464 336a48 48 0 1 0 96 0 48 48 0 1 0-96 0zm72 112h-48c-4.4 0-8 3.6-8 8v272c0 4.4 3.6 8 8 8h48c4.4 0 8-3.6 8-8V456c0-4.4-3.6-8-8-8z"></path></svg></el-icon>
-          <span>Clash Manager</span>
+          <div class="logo-icon">
+            <svg viewBox="0 0 1024 1024" width="28" height="28">
+              <path fill="currentColor" d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64z" opacity="0.2"/>
+              <path fill="currentColor" d="M765.9 186.2c-119.4-114.7-308.9-111.7-424.4 6.9S227.5 496.7 346.9 611.4c119.4 114.7 308.9 111.7 424.4-6.9s113.9-303.6-5.5-418.3zM393.3 657.6c-91.8-88.1-94.4-233.6-5.8-324.9s235.2-95.3 327 7.1c91.8 102.4 89.2 247.9-2.6 336.2-88.5 85.2-230.4 83.5-318.6-18.4z"/>
+              <path fill="currentColor" d="M512 320c-17.7 0-32 14.3-32 32v160c0 17.7 14.3 32 32 32s32-14.3 32-32V352c0-17.7-14.3-32-32-32zm0 280c-22.1 0-40 17.9-40 40s17.9 40 40 40 40-17.9 40-40-17.9-40-40-40z"/>
+            </svg>
+          </div>
+          <span class="logo-text">Clash Manager</span>
         </div>
         <el-menu
           :default-active="currentPath"
           router
-          background-color="#304156"
-          text-color="#bfcbd9"
-          active-text-color="#409eff"
+          class="sidebar-menu"
         >
           <el-menu-item index="/nodes">
-            <el-icon><svg viewBox="0 0 1024 1024" width="18" height="18"><path fill="currentColor" d="M128 192h768v128H192v640h640v-64h64v128H128V192z"></path><path fill="currentColor" d="M384 384h384v64H384v320h320v-64h64v128H384V384z"></path></svg></el-icon>
+            <el-icon><Connection /></el-icon>
             <span>节点管理</span>
           </el-menu-item>
           <el-menu-item index="/rules">
-            <el-icon><svg viewBox="0 0 1024 1024" width="18" height="18"><path fill="currentColor" d="M128 192h768v128H192v640h640v-64h64v128H128V192z"></path><path fill="currentColor" d="M384 384h384v64H384v320h320v-64h64v128H384V384z"></path></svg></el-icon>
+            <el-icon><DocumentCopy /></el-icon>
             <span>规则管理</span>
           </el-menu-item>
           <el-menu-item index="/groups">
-            <el-icon><svg viewBox="0 0 1024 1024" width="18" height="18"><path fill="currentColor" d="M128 192h768v128H192v640h640v-64h64v128H128V192z"></path><path fill="currentColor" d="M384 384h384v64H384v320h320v-64h64v128H384V384z"></path></svg></el-icon>
+            <el-icon><Grid /></el-icon>
             <span>代理组管理</span>
           </el-menu-item>
           <el-menu-item index="/subscription">
-            <el-icon><svg viewBox="0 0 1024 1024" width="18" height="18"><path fill="currentColor" d="M128 192h768v128H192v640h640v-64h64v128H128V192z"></path><path fill="currentColor" d="M384 384h384v64H384v320h320v-64h64v128H384V384z"></path></svg></el-icon>
+            <el-icon><Link /></el-icon>
             <span>订阅配置</span>
           </el-menu-item>
           <el-menu-item index="/subscription-logs">
-            <el-icon><svg viewBox="0 0 1024 1024" width="18" height="18"><path fill="currentColor" d="M128 192h768v128H192v640h640v-64h64v128H128V192z"></path><path fill="currentColor" d="M384 384h384v64H384v320h320v-64h64v128H384V384z"></path></svg></el-icon>
+            <el-icon><Document /></el-icon>
             <span>订阅日志</span>
           </el-menu-item>
           <el-menu-item index="/settings">
-            <el-icon><svg viewBox="0 0 1024 1024" width="18" height="18"><path fill="currentColor" d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372 166.6 372-372 372z"></path><path fill="currentColor" d="M464 336a48 48 0 1 0 96 0 48 48 0 1 0-96 0zm72 112h-48c-4.4 0-8 3.6-8 8v272c0 4.4 3.6 8 8 8h48c4.4 0 8-3.6 8-8V456c0-4.4-3.6-8-8-8z"></path></svg></el-icon>
+            <el-icon><Setting /></el-icon>
             <span>系统设置</span>
           </el-menu-item>
         </el-menu>
         <div class="aside-footer">
           <el-divider />
           <div class="menu-item" @click="router.push('/password')">
-            <el-icon><svg viewBox="0 0 1024 1024" width="16" height="16"><path fill="currentColor" d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"></path></svg></el-icon>
+            <el-icon><Lock /></el-icon>
             <span>修改密码</span>
           </div>
           <div class="menu-item logout-section" @click="handleLogout">
-            <el-icon><svg viewBox="0 0 1024 1024" width="16" height="16"><path fill="currentColor" d="M876 148H524V104c0-22.1-17.9-40-40-40H256c-22.1 0-40 17.9-40 40v44H148c-22.1 0-40 17.9-40 40v272c0 22.1 17.9 40 40 40h68v272c0 22.1 17.9 40 40 40h272c22.1 0 40-17.9 40-40V500h68c22.1 0 40-17.9 40-40V188c0-22.1-17.9-40-40-40z m-44 272H540V272h292v148z m-340 0h-52V148h52v272z m404 208H300V188h436v440z"></path></svg></el-icon>
+            <el-icon><SwitchButton /></el-icon>
             <span>退出登录</span>
           </div>
         </div>
@@ -66,18 +70,20 @@
           <div class="user-info">
             <el-dropdown @command="handleCommand">
               <div class="user-dropdown">
-                <el-icon size="20"><svg viewBox="0 0 1024 1024" width="20" height="20"><path fill="currentColor" d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"></path></svg></el-icon>
-                <span>{{ userStore.username }}</span>
-                <el-icon class="el-icon--right"><svg viewBox="0 0 1024 1024" width="12" height="12"><path fill="currentColor" d="M831.872 340.864 512 652.672 192.128 340.864 340.864 192.128 652.672 512 652.672c0 159.168-129.024 288.192-288.192 288.192S-64.192 671.744 512 671.744c159.168 0 288.192-129.024 288.192-288.192S671.744 340.864 512 340.864zM640 448c0 70.656-57.344 128-128 128s-128-57.344-128-128 57.344-128 128-128 128 57.344 128 128z"></path></svg></el-icon>
+                <div class="user-avatar">
+                  <el-icon><User /></el-icon>
+                </div>
+                <span class="username">{{ userStore.username }}</span>
+                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="password">
-                    <el-icon><svg viewBox="0 0 1024 1024" width="16" height="16"><path fill="currentColor" d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"></path></svg></el-icon>
+                    <el-icon><Lock /></el-icon>
                     修改密码
                   </el-dropdown-item>
                   <el-dropdown-item command="logout" divided>
-                    <el-icon><svg viewBox="0 0 1024 1024" width="16" height="16"><path fill="currentColor" d="M876 148H524V104c0-22.1-17.9-40-40-40H256c-22.1 0-40 17.9-40 40v44H148c-22.1 0-40 17.9-40 40v272c0 22.1 17.9 40 40 40h68v272c0 22.1 17.9 40 40 40h272c22.1 0 40-17.9 40-40V500h68c22.1 0 40-17.9 40-40V188c0-22.1-17.9-40-40-40z m-44 272H540V272h292v148z m-340 0h-52V148h52v272z m404 208H300V188h436v440z"></path></svg></el-icon>
+                    <el-icon><SwitchButton /></el-icon>
                     退出登录
                   </el-dropdown-item>
                 </el-dropdown-menu>
@@ -98,6 +104,18 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Connection,
+  DocumentCopy,
+  Grid,
+  Link,
+  Document,
+  Setting,
+  Lock,
+  SwitchButton,
+  User,
+  ArrowDown
+} from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
@@ -154,71 +172,137 @@ const handleLogout = () => {
 }
 
 .el-aside {
-  background-color: #304156;
+  background: linear-gradient(180deg, #1a1f3a 0%, #131729 100%);
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
 }
 
 .logo {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 60px;
+  height: 64px;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  padding: 0 16px;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.logo-text {
   color: #fff;
   font-size: 18px;
-  font-weight: bold;
-  gap: 10px;
-  border-bottom: 1px solid #1f2d3d;
-  flex-shrink: 0;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
-.logo .el-icon {
-  color: #409eff;
-}
-
-.el-menu {
+.sidebar-menu {
   border-right: none;
   flex: 1;
+  padding: 12px 8px;
+  background: transparent;
+}
+
+:deep(.sidebar-menu.el-menu) {
+  background: transparent;
+}
+
+:deep(.sidebar-menu .el-menu-item) {
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  margin-bottom: 4px;
+  height: 44px;
+  line-height: 44px;
+  transition: all 0.3s ease;
+}
+
+:deep(.sidebar-menu .el-menu-item:hover) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+:deep(.sidebar-menu .el-menu-item.is-active) {
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+  color: #fff;
+  position: relative;
+}
+
+:deep(.sidebar-menu .el-menu-item.is-active::before) {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  border-radius: 0 3px 3px 0;
+}
+
+:deep(.sidebar-menu .el-menu-item .el-icon) {
+  margin-right: 8px;
+  font-size: 18px;
 }
 
 .aside-footer {
-  border-top: 1px solid #1f2d3d;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
+  padding: 12px 8px;
 }
 
 :deep(.aside-footer .el-divider) {
-  margin: 0;
-  border-color: #1f2d3d;
+  margin: 0 0 12px 0;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  height:  48px;
-  padding-left: 20px;
-  color: #bfcbd9;
+  height: 44px;
+  padding: 0 16px;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  font-size: 14px;
 }
 
 .menu-item:hover {
-  background-color: #263445;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 
 .menu-item.logout-section:hover {
-  background-color: #263445;
+  background: rgba(245, 108, 108, 0.15);
   color: #f56c6c;
+}
+
+.menu-item .el-icon {
+  font-size: 16px;
 }
 
 .el-header {
   background: #fff;
-  border-bottom: 1px solid #e6e6e6;
+  border-bottom: 1px solid #e8e8e8;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .header-content {
@@ -232,6 +316,15 @@ const handleLogout = () => {
   flex: 1;
 }
 
+:deep(.breadcrumb .el-breadcrumb__item) {
+  font-size: 15px;
+}
+
+:deep(.breadcrumb .el-breadcrumb__inner) {
+  color: #303133;
+  font-weight: 500;
+}
+
 .user-info {
   display: flex;
   align-items: center;
@@ -242,33 +335,46 @@ const handleLogout = () => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
 }
 
 .user-dropdown:hover {
-  background-color: #f5f7fa;
+  background: #f5f7fa;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+}
+
+.username {
+  font-size: 14px;
+  color: #303133;
+  font-weight: 500;
 }
 
 .el-main {
-  background: #f0f2f5;
-  padding: 20px;
+  background: #f5f7fa;
+  padding: 24px;
   overflow-y: auto;
-}
-
-:deep(.el-menu-item) {
-  display: flex;
-  align-items: center;
-}
-
-:deep(.el-menu-item .el-icon) {
-  margin-right: 8px;
 }
 
 :deep(.el-dropdown-menu__item) {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+:deep(.el-dropdown-menu__item .el-icon) {
+  font-size: 16px;
 }
 </style>
