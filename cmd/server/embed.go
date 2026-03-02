@@ -1,4 +1,4 @@
-package embedfs
+package main
 
 import (
 	"embed"

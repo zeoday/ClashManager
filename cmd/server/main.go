@@ -10,7 +10,6 @@ import (
 	"clash-manager/internal/api"
 	"clash-manager/internal/config"
 	"clash-manager/internal/repository"
-	embedfs "clash-manager/pkg/embed"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -41,7 +40,7 @@ func main() {
 	r.RedirectTrailingSlash = false // 禁用 trailing slash 重定向
 	r.RedirectFixedPath = false     // 禁用路径修正重定向
 	api.SetupRoutes(r)
-	embedfs.SetupStaticRoutes(r) // 必须在 API 路由之后注册
+	SetupStaticRoutes(r) // 必须在 API 路由之后注册
 
 	// 3. Start Server
 	log.Printf("Server starting on %s...", serverPort)

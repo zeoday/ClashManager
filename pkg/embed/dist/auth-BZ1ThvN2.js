@@ -1,1 +1,0 @@
-import{s as o}from"./request-Dw3XrAPh.js";function r(t){return o({url:"/auth/login",method:"post",data:t,noAuth:!0})}function s(t){return o({url:"/auth/setup",method:"post",data:t,noAuth:!0})}function e(t){return o({url:"/auth/password",method:"post",data:t})}export{e as c,r as l,s};
