@@ -57,8 +57,18 @@ func parseSS(link string) (*model.Node, error) {
 		userInfo := u.User.String()
 		// Try decoding if it looks like base64 (no colon)
 		if !strings.Contains(userInfo, ":") {
-			decoded, err := base64.RawURLEncoding.DecodeString(userInfo)
-			if err == nil {
+			// Try multiple base64 decodings
+			// 1. RawURLEncoding (no padding) - SIP002 standard
+			if decoded, err := base64.RawURLEncoding.DecodeString(userInfo); err == nil {
+				userInfo = string(decoded)
+			} else if decoded, err := base64.URLEncoding.DecodeString(userInfo); err == nil {
+				// 2. URLEncoding (with padding)
+				userInfo = string(decoded)
+			} else if decoded, err := base64.RawStdEncoding.DecodeString(userInfo); err == nil {
+				// 3. RawStdEncoding (no padding, standard chars)
+				userInfo = string(decoded)
+			} else if decoded, err := base64.StdEncoding.DecodeString(userInfo); err == nil {
+				// 4. StdEncoding (with padding, standard chars)
 				userInfo = string(decoded)
 			}
 		}
@@ -78,13 +88,17 @@ func parseSS(link string) (*model.Node, error) {
 		raw += u.Path
 	}
 
-	decoded, err := base64.RawURLEncoding.DecodeString(raw)
-	if err != nil {
-		// Try standard encoding
-		decoded, err = base64.URLEncoding.DecodeString(raw)
-	}
-	if err != nil {
-		return nil, err
+	var decoded []byte
+	var decodeErr error
+	// Try multiple base64 decodings
+	if decoded, decodeErr = base64.RawURLEncoding.DecodeString(raw); decodeErr != nil {
+		if decoded, decodeErr = base64.URLEncoding.DecodeString(raw); decodeErr != nil {
+			if decoded, decodeErr = base64.RawStdEncoding.DecodeString(raw); decodeErr != nil {
+				if decoded, decodeErr = base64.StdEncoding.DecodeString(raw); decodeErr != nil {
+					return nil, decodeErr
+				}
+			}
+		}
 	}
 
 	// "method:password@hostname:port"
