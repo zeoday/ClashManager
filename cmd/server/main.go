@@ -10,6 +10,7 @@ import (
 	"clash-manager/internal/api"
 	"clash-manager/internal/config"
 	"clash-manager/internal/repository"
+	embedfs "clash-manager/pkg/embed"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -31,7 +32,7 @@ func main() {
 
 	// Handle Reset Password Flag
 	if *resetAdminPtr != "" {
-		handleResetInfo(*resetAdminPtr)
+		handleResetAdmin(*resetAdminPtr)
 		return
 	}
 
@@ -40,7 +41,7 @@ func main() {
 	r.RedirectTrailingSlash = false // 禁用 trailing slash 重定向
 	r.RedirectFixedPath = false     // 禁用路径修正重定向
 	api.SetupRoutes(r)
-	setupStaticRoutes(r) // 必须在 API 路由之后注册
+	embedfs.SetupStaticRoutes(r) // 必须在 API 路由之后注册
 
 	// 3. Start Server
 	log.Printf("Server starting on %s...", serverPort)
@@ -62,11 +63,13 @@ func formatPort(port string) string {
 	return ":" + port
 }
 
-func handleResetInfo(newPassword string) {
+func handleResetAdmin(newPassword string) {
+	fmt.Printf("Database: %s\n", config.GetDBPath())
 	fmt.Printf("Resetting admin password...\n")
 
 	repo := &repository.UserRepository{}
-	if _, err := repo.FindByUsername("admin"); err != nil {
+	user, err := repo.FindByUsername("admin")
+	if err != nil {
 		fmt.Printf("Error: Admin user not found. Please ensure the system is initialized.\n")
 		os.Exit(1)
 	}
@@ -83,4 +86,5 @@ func handleResetInfo(newPassword string) {
 	}
 
 	fmt.Printf("Success: Admin password reset to '%s'\n", newPassword)
+	fmt.Printf("User ID: %d\n", user.ID)
 }

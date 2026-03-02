@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +20,21 @@ func SetupStaticRoutes(r *gin.Engine) {
 		return
 	}
 
-	// 使用 StaticFS 提供静态文件服务
-	// 注意：这会处理所有静态文件，包括 index.html
-	r.StaticFS("/", http.FS(subFS))
+	// 创建文件服务器
+	fileServer := http.FileServer(http.FS(subFS))
+
+	// 使用 NoRoute 处理静态文件请求
+	// 必须在 API 路由之后设置，这样 API 路由会优先匹配
+	r.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+
+		// API 路径返回 404
+		if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/sub") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+
+		// 使用文件服务器处理
+		fileServer.ServeHTTP(c.Writer, c.Request)
+	})
 }
