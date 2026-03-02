@@ -60,6 +60,7 @@ func SetupRoutes(r *gin.Engine) {
 		api.GET("/subscription/token", subscriptionHandler.GetToken)
 		api.POST("/subscription/token/refresh", subscriptionHandler.RefreshToken)
 		api.GET("/subscription/url", subscriptionHandler.GetSubscriptionURL)
+		api.GET("/subscription/preview", subscriptionHandler.PreviewConfig)
 		api.GET("/subscription/logs", subscriptionHandler.GetSubscriptionLogs)
 		api.GET("/subscription/stats", subscriptionHandler.GetSubscriptionStats)
 		api.DELETE("/subscription/logs/old", subscriptionHandler.DeleteOldLogs)

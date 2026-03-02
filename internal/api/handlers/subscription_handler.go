@@ -3,6 +3,7 @@ package handlers
 import (
 	"clash-manager/internal/model"
 	"clash-manager/internal/repository"
+	"clash-manager/internal/service"
 	"net/http"
 	"strconv"
 
@@ -222,4 +223,26 @@ func (h *SubscriptionHandler) GetOnlineClients(c *gin.Context) {
 		"clients": result,
 		"total":   0,
 	})
+}
+
+// PreviewConfig validates and returns preview of the config without logging
+func (h *SubscriptionHandler) PreviewConfig(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	// Verify user exists
+	_, err := h.UserRepo.FindByID(userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Generate and validate config
+	configService := service.NewConfigService()
+	validationResult, err := configService.ValidateConfig()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, validationResult)
 }

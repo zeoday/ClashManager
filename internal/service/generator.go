@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"clash-manager/internal/model"
@@ -279,4 +280,308 @@ func (s *ConfigService) GenerateConfig() ([]byte, error) {
 
 	// 6. Marshal to YAML
 	return yaml.Marshal(config)
+}
+
+// ValidationError represents a single validation error
+type ValidationError struct {
+	Type    string `json:"type"`    // error, warning
+	Message string `json:"message"` // error message
+	Field   string `json:"field"`   // field name (optional)
+	Index   int    `json:"index"`   // index for arrays (optional)
+}
+
+// ValidationResult represents the result of config validation
+type ValidationResult struct {
+	Valid  bool              `json:"valid"`
+	Errors []ValidationError `json:"errors"`
+}
+
+// ValidateConfig validates the generated Clash configuration
+func (s *ConfigService) ValidateConfig() (*ValidationResult, error) {
+	result := &ValidationResult{
+		Valid:  true,
+		Errors: []ValidationError{},
+	}
+
+	// 1. Fetch all data
+	nodes, err := s.NodeRepo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+	rules, err := s.RuleRepo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+	groups, err := s.GroupRepo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Validate nodes
+	for i, node := range nodes {
+		if node.Name == "" {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Type:    "error",
+				Message: fmt.Sprintf("节点 #%d: 名称不能为空", i+1),
+				Field:   "name",
+				Index:   i,
+			})
+		}
+		if node.Server == "" {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Type:    "error",
+				Message: fmt.Sprintf("节点 \"%s\": 服务器地址不能为空", node.Name),
+				Field:   "server",
+				Index:   i,
+			})
+		}
+		if node.Port <= 0 || node.Port > 65535 {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Type:    "error",
+				Message: fmt.Sprintf("节点 \"%s\": 端口无效 (%d)", node.Name, node.Port),
+				Field:   "port",
+				Index:   i,
+			})
+		}
+
+		// Type-specific validation
+		switch node.Type {
+		case "ss", "shadowsocks":
+			if node.Cipher == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{
+					Type:    "error",
+					Message: fmt.Sprintf("节点 \"%s\": Shadowsocks 需要加密方式", node.Name),
+					Field:   "cipher",
+					Index:   i,
+				})
+			}
+			if node.Password == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{
+					Type:    "error",
+					Message: fmt.Sprintf("节点 \"%s\": Shadowsocks 需要密码", node.Name),
+					Field:   "password",
+					Index:   i,
+				})
+			}
+		case "vmess", "vless":
+			if node.UUID == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{
+					Type:    "error",
+					Message: fmt.Sprintf("节点 \"%s\": %s 需要 UUID", node.Name, strings.ToUpper(node.Type)),
+					Field:   "uuid",
+					Index:   i,
+				})
+			}
+		case "trojan":
+			if node.Password == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{
+					Type:    "error",
+					Message: fmt.Sprintf("节点 \"%s\": Trojan 需要密码", node.Name),
+					Field:   "password",
+					Index:   i,
+				})
+			}
+		case "hysteria2":
+			if node.Password == "" && node.UUID == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{
+					Type:    "error",
+					Message: fmt.Sprintf("节点 \"%s\": Hysteria2 需要密码", node.Name),
+					Field:   "password",
+					Index:   i,
+				})
+			}
+		}
+	}
+
+	// 3. Validate rules
+	supportedRuleTypes := map[string]bool{
+		"DOMAIN": true, "DOMAIN-SUFFIX": true, "DOMAIN-KEYWORD": true,
+		"IP-CIDR": true, "GEOIP": true, "SRC-IP-CIDR": true,
+		"SRC-PORT": true, "DST-PORT": true, "PROCESS-NAME": true,
+		"RULE-SET": true, "MATCH": true,
+	}
+
+	for i, rule := range rules {
+		if rule.Type == "" {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Type:    "error",
+				Message: fmt.Sprintf("规则 #%d: 类型不能为空", i+1),
+				Field:   "type",
+				Index:   i,
+			})
+			continue
+		}
+
+		if !supportedRuleTypes[rule.Type] {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Type:    "error",
+				Message: fmt.Sprintf("规则 #%d: 不支持的规则类型 \"%s\"", i+1, rule.Type),
+				Field:   "type",
+				Index:   i,
+			})
+		}
+
+		if rule.Payload == "" && rule.Type != "MATCH" {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Type:    "error",
+				Message: fmt.Sprintf("规则 #%d: Payload 不能为空", i+1),
+				Field:   "payload",
+				Index:   i,
+			})
+		}
+
+		// IP-CIDR validation
+		if rule.Type == "IP-CIDR" && rule.Payload != "" {
+			if !strings.Contains(rule.Payload, "/") {
+				// Warning: will be auto-fixed to /32
+				result.Errors = append(result.Errors, ValidationError{
+					Type:    "warning",
+					Message: fmt.Sprintf("规则 #%d: IP-CIDR \"%s\" 缺少子网掩码，将自动添加 /32", i+1, rule.Payload),
+					Field:   "payload",
+					Index:   i,
+				})
+			}
+		}
+
+		// Validate target exists
+		targetExists := false
+		if rule.TargetID > 0 {
+			if rule.TargetType == "node" {
+				for _, n := range nodes {
+					if n.ID == rule.TargetID {
+						targetExists = true
+						break
+					}
+				}
+			} else if rule.TargetType == "group" {
+				for _, g := range groups {
+					if g.ID == rule.TargetID {
+						targetExists = true
+						break
+					}
+				}
+			}
+		} else if rule.Target != "" {
+			// Check if target is a built-in or valid name
+			if rule.Target == "DIRECT" || rule.Target == "REJECT" {
+				targetExists = true
+			}
+			// Check groups
+			for _, g := range groups {
+				if g.Name == rule.Target {
+					targetExists = true
+					break
+				}
+			}
+		}
+
+		if !targetExists && rule.Type != "MATCH" {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Type:    "error",
+				Message: fmt.Sprintf("规则 #%d: 目标 \"%s\" 不存在", i+1, getTargetName(rule)),
+				Field:   "target",
+				Index:   i,
+			})
+		}
+	}
+
+	// 4. Validate proxy groups
+	for i, group := range groups {
+		if group.Name == "" {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Type:    "error",
+				Message: fmt.Sprintf("策略组 #%d: 名称不能为空", i+1),
+				Field:   "name",
+				Index:   i,
+			})
+		}
+
+		if group.Type != "select" && group.Type != "url-test" && group.Type != "fallback" && group.Type != "load-balance" {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Type:    "error",
+				Message: fmt.Sprintf("策略组 \"%s\": 不支持的类型 \"%s\"", group.Name, group.Type),
+				Field:   "type",
+				Index:   i,
+			})
+		}
+
+		if group.Type == "url-test" || group.Type == "fallback" {
+			if group.URL == "" {
+				result.Errors = append(result.Errors, ValidationError{
+					Type:    "warning",
+					Message: fmt.Sprintf("策略组 \"%s\": 未设置测速 URL，将使用默认值", group.Name),
+					Field:   "url",
+					Index:   i,
+				})
+			}
+		}
+
+		// Validate proxy IDs
+		if group.ProxyIDs != "" {
+			var nodeIDs []uint
+			if err := json.Unmarshal([]byte(group.ProxyIDs), &nodeIDs); err == nil {
+				nodeMap := make(map[uint]bool)
+				for _, n := range nodes {
+					nodeMap[n.ID] = true
+				}
+				for _, id := range nodeIDs {
+					if !nodeMap[id] {
+						result.Valid = false
+						result.Errors = append(result.Errors, ValidationError{
+							Type:    "error",
+							Message: fmt.Sprintf("策略组 \"%s\": 引用的节点 ID %d 不存在", group.Name, id),
+							Field:   "proxyIDs",
+							Index:   i,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// 5. General warnings
+	if len(nodes) == 0 {
+		result.Errors = append(result.Errors, ValidationError{
+			Type:    "warning",
+			Message: "没有配置任何节点",
+			Field:   "nodes",
+		})
+	}
+	if len(rules) == 0 {
+		result.Errors = append(result.Errors, ValidationError{
+			Type:    "warning",
+			Message: "没有配置任何规则",
+			Field:   "rules",
+		})
+	}
+
+	return result, nil
+}
+
+// getTargetName returns the display name of a rule's target
+func getTargetName(rule model.Rule) string {
+	if rule.Target != "" {
+		return rule.Target
+	}
+	if rule.TargetType == "node" {
+		return fmt.Sprintf("节点 #%d", rule.TargetID)
+	}
+	if rule.TargetType == "group" {
+		return fmt.Sprintf("策略组 #%d", rule.TargetID)
+	}
+	return "未知"
 }
