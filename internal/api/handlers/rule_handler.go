@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -26,6 +27,11 @@ func (h *RuleHandler) ListRules(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "50"))
 	ruleType := c.Query("type")
 	keyword := c.Query("keyword")
+	target := c.Query("target")
+
+	// Debug logging
+	fmt.Printf("[ListRules] Query params - page: %d, pageSize: %d, type: %s, keyword: %s, target: %s\n",
+		page, pageSize, ruleType, keyword, target)
 
 	// Validate parameters
 	if page < 1 {
@@ -40,13 +46,19 @@ func (h *RuleHandler) ListRules(c *gin.Context) {
 		PageSize: pageSize,
 		Type:     ruleType,
 		Keyword:  keyword,
+		Target:   target,
 	}
 
 	result, err := h.Repo.FindWithPagination(params)
 	if err != nil {
+		fmt.Printf("[ListRules] Error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	fmt.Printf("[ListRules] Result - Total: %d, Page: %d, PageSize: %d, TotalPages: %d, RulesCount: %d\n",
+		result.Total, result.Page, result.PageSize, result.TotalPages, len(result.Rules))
+
 	c.JSON(http.StatusOK, result)
 }
 
