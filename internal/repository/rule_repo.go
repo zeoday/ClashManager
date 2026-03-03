@@ -12,6 +12,7 @@ type RuleListParams struct {
 	Type     string `json:"type"`
 	Keyword  string `json:"keyword"`
 	Target   string `json:"target"` // 过滤目标名称
+	Tag      string `json:"tag"`    // 过滤标签
 }
 
 type RuleListResult struct {
@@ -49,8 +50,8 @@ func (r *RuleRepository) FindWithPagination(params *RuleListParams) (*RuleListRe
 
 	query := DB.Model(&model.Rule{})
 
-	fmt.Printf("[FindWithPagination] Input params - Page: %d, PageSize: %d, Type: %s, Keyword: %s, Target: %s\n",
-		params.Page, params.PageSize, params.Type, params.Keyword, params.Target)
+	fmt.Printf("[FindWithPagination] Input params - Page: %d, PageSize: %d, Type: %s, Keyword: %s, Target: %s, Tag: %s\n",
+		params.Page, params.PageSize, params.Type, params.Keyword, params.Target, params.Tag)
 
 	// Filter by type
 	if params.Type != "" {
@@ -69,6 +70,12 @@ func (r *RuleRepository) FindWithPagination(params *RuleListParams) (*RuleListRe
 	if params.Target != "" {
 		query = query.Where("target = ?", params.Target)
 		fmt.Printf("[FindWithPagination] Applied target filter: %s\n", params.Target)
+	}
+
+	// Filter by tag
+	if params.Tag != "" {
+		query = query.Where("tag = ?", params.Tag)
+		fmt.Printf("[FindWithPagination] Applied tag filter: %s\n", params.Tag)
 	}
 
 	// Count total
@@ -120,4 +127,16 @@ func (r *RuleRepository) FindByID(id uint) (*model.Rule, error) {
 		return nil, err
 	}
 	return &rule, nil
+}
+
+// GetAllTags returns all unique non-empty tags from rules
+func (r *RuleRepository) GetAllTags() ([]string, error) {
+	var tags []string
+	err := DB.Model(&model.Rule{}).
+		Where("tag != ''").
+		Where("tag IS NOT NULL").
+		Distinct("tag").
+		Pluck("tag", &tags).
+		Error
+	return tags, err
 }

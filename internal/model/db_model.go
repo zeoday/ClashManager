@@ -47,9 +47,10 @@ type Rule struct {
 	Payload    string // google.com, US
 	Target     string // ProxyGroupName or specifics (Legacy)
 	TargetID   uint   `gorm:"default:0"` // ID of the target Node or Group
-	TargetType string // "node", "group"
+	TargetType string // "node", "group", "builtin"
 	Priority   int    `gorm:"default:0"` // Lower number = higher priority
 	NoResolve  bool
+	Tag        string // Tag for categorization: shopping, carrier, video, game, etc.
 	Remark     string // Remark for display only, not used in config generation
 }
 

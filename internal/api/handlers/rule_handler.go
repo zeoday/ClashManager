@@ -28,10 +28,11 @@ func (h *RuleHandler) ListRules(c *gin.Context) {
 	ruleType := c.Query("type")
 	keyword := c.Query("keyword")
 	target := c.Query("target")
+	tag := c.Query("tag")
 
 	// Debug logging
-	fmt.Printf("[ListRules] Query params - page: %d, pageSize: %d, type: %s, keyword: %s, target: %s\n",
-		page, pageSize, ruleType, keyword, target)
+	fmt.Printf("[ListRules] Query params - page: %d, pageSize: %d, type: %s, keyword: %s, target: %s, tag: %s\n",
+		page, pageSize, ruleType, keyword, target, tag)
 
 	// Validate parameters
 	if page < 1 {
@@ -47,6 +48,7 @@ func (h *RuleHandler) ListRules(c *gin.Context) {
 		Type:     ruleType,
 		Keyword:  keyword,
 		Target:   target,
+		Tag:      tag,
 	}
 
 	result, err := h.Repo.FindWithPagination(params)
@@ -233,5 +235,17 @@ func (h *RuleHandler) ImportRules(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Rules imported successfully",
 		"count":   len(rulesToImport),
+	})
+}
+
+// GetTags returns all unique tags from rules
+func (h *RuleHandler) GetTags(c *gin.Context) {
+	tags, err := h.Repo.GetAllTags()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"tags": tags,
 	})
 }

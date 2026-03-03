@@ -41,6 +41,7 @@ func SetupRoutes(r *gin.Engine) {
 
 		// Rule routes
 		api.GET("/rules", ruleHandler.ListRules)
+		api.GET("/rules/tags", ruleHandler.GetTags)
 		api.POST("/rules", ruleHandler.CreateRule)
 		api.POST("/rules/import", ruleHandler.ImportRules)
 		api.PUT("/rules/:id", ruleHandler.UpdateRule)

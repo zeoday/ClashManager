@@ -8,6 +8,13 @@ export function getRules(params) {
   })
 }
 
+export function getTags() {
+  return request({
+    url: '/rules/tags',
+    method: 'get'
+  })
+}
+
 export function createRule(data) {
   return request({
     url: '/rules',

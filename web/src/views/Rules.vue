@@ -52,7 +52,7 @@
             v-model="filterTarget"
             placeholder="目标类型"
             clearable
-            class="filter-select-wide"
+            class="filter-select"
             @change="handleFilterTargetChange"
             @clear="handleFilterTargetClear"
           >
@@ -106,6 +106,23 @@
             </el-option-group>
           </el-select>
 
+          <el-select
+            v-model="filterTag"
+            placeholder="标签"
+            clearable
+            class="filter-select"
+            @change="handleFilterTagChange"
+            @clear="handleFilterTagClear"
+            filterable
+          >
+            <el-option
+              v-for="tag in availableTags"
+              :key="tag"
+              :label="tag"
+              :value="tag"
+            />
+          </el-select>
+
           <el-button @click="resetFilter" :icon="RefreshLeft">重置</el-button>
         </div>
         <div class="filter-right">
@@ -157,6 +174,12 @@
                 <span>{{ row.Target }}</span>
               </div>
             </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="Tag" label="标签" min-width="90">
+          <template #default="{ row }">
+            <el-tag v-if="row.Tag" size="small" class="rule-tag">{{ row.Tag }}</el-tag>
+            <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="Remark" label="备注" min-width="150" show-overflow-tooltip />
@@ -259,6 +282,10 @@
             </el-option-group>
           </el-select>
         </el-form-item>
+        <el-form-item label="标签">
+          <el-input v-model="ruleForm.Tag" placeholder="输入标签（可选）" class="form-input" clearable />
+          <div class="form-hint">用于分类管理规则，不会生成到配置文件中</div>
+        </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="ruleForm.Remark" placeholder="可选，用于记录规则用途" maxlength="200" show-word-limit class="form-input" />
           <div class="form-hint">备注仅用于展示，不会生成到配置文件中</div>
@@ -329,13 +356,14 @@ import {
   Delete,
   UploadFilled
 } from '@element-plus/icons-vue'
-import { getRules, createRule, updateRule, deleteRule, importRules } from '@/api/rules'
+import { getRules, createRule, updateRule, deleteRule, importRules, getTags } from '@/api/rules'
 import { getGroups } from '@/api/groups'
 import { getNodes } from '@/api/nodes'
 
 const rules = ref([])
 const groups = ref([])
 const nodes = ref([])
+const availableTags = ref([])
 const formDialogVisible = ref(false)
 const isEdit = ref(false)
 const editId = ref(null)
@@ -353,6 +381,7 @@ const ruleForm = ref({
   TargetType: '',
   Priority: 0,
   NoResolve: false,
+  Tag: '',
   Remark: ''
 })
 
@@ -376,6 +405,7 @@ const getTargetDisplayName = (row) => {
 const searchKeyword = ref('')
 const filterType = ref('')
 const filterTarget = ref('')
+const filterTag = ref('')
 
 // 分页相关
 const currentPage = ref(1)
@@ -443,6 +473,11 @@ const loadRules = async () => {
       }
     }
 
+    // 标签过滤
+    if (filterTag.value) {
+      params.tag = filterTag.value
+    }
+
     const result = await getRules(params)
     rules.value = result.rules || []
     total.value = result.total || 0
@@ -486,6 +521,7 @@ const showCreateDialog = async () => {
     TargetType: 'builtin',
     Priority: 0,
     NoResolve: false,
+    Tag: '',
     Remark: ''
   }
   await Promise.all([loadGroups(), loadNodes()])
@@ -517,6 +553,7 @@ const handleEdit = async (row) => {
     TargetType: row.TargetType || 'builtin', // Default to builtin for backward compatibility
     Priority: row.Priority ?? 0,
     NoResolve: row.NoResolve,
+    Tag: row.Tag || '',
     Remark: row.Remark || ''
   }
   await Promise.all([loadGroups(), loadNodes()])
@@ -555,6 +592,7 @@ const handleSave = async () => {
     TargetType: targetType,
     Priority: ruleForm.value.Priority ?? 0,
     NoResolve: ruleForm.value.NoResolve,
+    Tag: ruleForm.value.Tag ? ruleForm.value.Tag.trim() : '',
     Remark: ruleForm.value.Remark || ''
   }
   if (isEdit.value) {
@@ -566,6 +604,7 @@ const handleSave = async () => {
   }
   formDialogVisible.value = false
   loadRules()
+  loadAvailableTags() // Refresh available tags
 }
 
 const handleDelete = async (row) => {
@@ -602,10 +641,22 @@ const handleFilterTargetClear = () => {
   loadRules()
 }
 
+const handleFilterTagChange = () => {
+  currentPage.value = 1
+  loadRules()
+}
+
+const handleFilterTagClear = () => {
+  filterTag.value = ''
+  currentPage.value = 1
+  loadRules()
+}
+
 const resetFilter = () => {
   searchKeyword.value = ''
   filterType.value = ''
   filterTarget.value = ''
+  filterTag.value = ''
   currentPage.value = 1
   loadRules()
 }
@@ -659,10 +710,20 @@ const handleImport = async () => {
   }
 }
 
+const loadAvailableTags = async () => {
+  try {
+    const result = await getTags()
+    availableTags.value = result.tags || []
+  } catch (error) {
+    console.error('Load tags error:', error)
+  }
+}
+
 onMounted(() => {
   loadRules()
   loadGroups()
   loadNodes()
+  loadAvailableTags()
 })
 </script>
 
@@ -916,6 +977,23 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 规则标签样式 */
+.rule-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  height: 20px;
+  line-height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #f0f2f5 0%, #e8eaf0 100%);
+  color: #606266;
+  border: 1px solid #dcdfe6;
+}
+
+.text-muted {
+  color: #c0c4cc;
+  font-size: 12px;
 }
 
 /* 分页 */
