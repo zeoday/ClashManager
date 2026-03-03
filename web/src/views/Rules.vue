@@ -129,18 +129,31 @@
         <el-table-column prop="Target" label="目标" min-width="140">
           <template #default="{ row }">
             <div class="target-cell">
-              <!-- 固定出口 -->
-              <el-tag v-if="row.Target === 'PROXY'" type="primary" size="small" class="target-tag proxy">
-                PROXY
-              </el-tag>
-              <el-tag v-else-if="row.Target === 'DIRECT'" type="success" size="small" class="target-tag direct">
-                DIRECT
-              </el-tag>
-              <el-tag v-else-if="row.Target === 'REJECT'" type="danger" size="small" class="target-tag reject">
-                REJECT
-              </el-tag>
-              <!-- 其他目标（节点名或代理组名） -->
-              <div v-else class="target-tag other">
+              <!-- 固定出口 builtin -->
+              <div v-if="row.TargetType === 'builtin' && row.Target === 'PROXY'" class="target-tag proxy">
+                <span>PROXY</span>
+              </div>
+              <div v-else-if="row.TargetType === 'builtin' && row.Target === 'DIRECT'" class="target-tag direct">
+                <span>DIRECT</span>
+              </div>
+              <div v-else-if="row.TargetType === 'builtin' && row.Target === 'REJECT'" class="target-tag reject">
+                <span>REJECT</span>
+              </div>
+              <div v-else-if="row.TargetType === 'builtin'" class="target-tag builtin">
+                <span>{{ row.Target }}</span>
+              </div>
+              <!-- 代理节点 -->
+              <div v-else-if="row.TargetType === 'node'" class="target-tag node">
+                <el-icon><Connection /></el-icon>
+                <span>{{ getTargetDisplayName(row) }}</span>
+              </div>
+              <!-- 代理组 -->
+              <div v-else-if="row.TargetType === 'group'" class="target-tag group">
+                <el-icon><Grid /></el-icon>
+                <span>{{ getTargetDisplayName(row) }}</span>
+              </div>
+              <!-- 其他（兼容旧数据） -->
+              <div v-else class="target-tag builtin">
                 <span>{{ row.Target }}</span>
               </div>
             </div>
@@ -337,12 +350,27 @@ const ruleForm = ref({
   Type: 'DOMAIN-SUFFIX',
   Payload: '',
   Target: 'PROXY',
-  TargetID: 0,
   TargetType: '',
   Priority: 0,
   NoResolve: false,
   Remark: ''
 })
+
+// 解析目标显示名称（从ID转换为名称）
+const getTargetDisplayName = (row) => {
+  // Handle builtin targets (including empty TargetType for backward compatibility)
+  if (!row.TargetType || row.TargetType === 'builtin') {
+    return row.Target
+  }
+  if (row.TargetType === 'node') {
+    const node = nodes.value.find(n => String(n.ID) === String(row.Target))
+    return node ? node.Name : row.Target
+  } else if (row.TargetType === 'group') {
+    const group = groups.value.find(g => String(g.ID) === String(row.Target))
+    return group ? group.Name : row.Target
+  }
+  return row.Target
+}
 
 // 搜索和过滤
 const searchKeyword = ref('')
@@ -435,28 +463,17 @@ const loadNodes = async () => {
 }
 
 const handleTargetChange = (value) => {
-  // Check if it's a node reference (format: "node:ID:Name")
+  // Only update TargetType, keep Target as-is for select display
   if (value && value.startsWith('node:')) {
-    const parts = value.split(':')
-    if (parts.length >= 3) {
-      ruleForm.value.TargetID = parseInt(parts[1])
-      ruleForm.value.TargetType = 'node'
-      ruleForm.value.Target = parts[2] // Store name for display
-    }
+    ruleForm.value.TargetType = 'node'
   } else if (value && value.startsWith('group:')) {
-    // Check if it's a group reference (format: "group:ID:Name")
-    const parts = value.split(':')
-    if (parts.length >= 3) {
-      ruleForm.value.TargetID = parseInt(parts[1])
-      ruleForm.value.TargetType = 'group'
-      ruleForm.value.Target = parts[2] // Store name for display
-    }
+    ruleForm.value.TargetType = 'group'
   } else {
     // Built-in target (PROXY, DIRECT, REJECT)
-    ruleForm.value.TargetID = 0
-    ruleForm.value.TargetType = ''
-    ruleForm.value.Target = value
+    ruleForm.value.TargetType = 'builtin'
   }
+  // Target value is kept as the select option value (node:ID:Name or group:ID:Name or builtin value)
+  ruleForm.value.Target = value
 }
 
 const showCreateDialog = async () => {
@@ -466,8 +483,7 @@ const showCreateDialog = async () => {
     Type: 'DOMAIN-SUFFIX',
     Payload: '',
     Target: 'PROXY',
-    TargetID: 0,
-    TargetType: '',
+    TargetType: 'builtin',
     Priority: 0,
     NoResolve: false,
     Remark: ''
@@ -479,19 +495,26 @@ const showCreateDialog = async () => {
 const handleEdit = async (row) => {
   isEdit.value = true
   editId.value = row.ID
-  // Build Target value from TargetID and TargetType
+  // Build Target value for select dropdown
   let targetValue = row.Target || 'PROXY'
-  if (row.TargetID > 0 && row.TargetType === 'node') {
-    targetValue = `node:${row.TargetID}:${row.Target}`
-  } else if (row.TargetID > 0 && row.TargetType === 'group') {
-    targetValue = `group:${row.TargetID}:${row.Target}`
+  if (row.TargetType === 'node') {
+    // Find node by ID to get the name
+    const node = nodes.value.find(n => String(n.ID) === String(row.Target))
+    if (node) {
+      targetValue = `node:${node.ID}:${node.Name}`
+    }
+  } else if (row.TargetType === 'group') {
+    // Find group by ID to get the name
+    const group = groups.value.find(g => String(g.ID) === String(row.Target))
+    if (group) {
+      targetValue = `group:${group.ID}:${group.Name}`
+    }
   }
   ruleForm.value = {
     Type: row.Type,
     Payload: row.Payload,
     Target: targetValue,
-    TargetID: row.TargetID || 0,
-    TargetType: row.TargetType || '',
+    TargetType: row.TargetType || 'builtin', // Default to builtin for backward compatibility
     Priority: row.Priority ?? 0,
     NoResolve: row.NoResolve,
     Remark: row.Remark || ''
@@ -505,12 +528,31 @@ const handleSave = async () => {
     ElMessage.warning('请填写完整信息')
     return
   }
+
+  // Parse Target value based on TargetType
+  let targetValue = ruleForm.value.Target
+  const targetType = ruleForm.value.TargetType || 'builtin'
+
+  if (targetType === 'node' && targetValue.startsWith('node:')) {
+    // Extract ID from "node:ID:Name" format
+    const parts = targetValue.split(':')
+    if (parts.length >= 2) {
+      targetValue = String(parts[1]) // Store ID as string
+    }
+  } else if (targetType === 'group' && targetValue.startsWith('group:')) {
+    // Extract ID from "group:ID:Name" format
+    const parts = targetValue.split(':')
+    if (parts.length >= 2) {
+      targetValue = String(parts[1]) // Store ID as string
+    }
+  }
+  // For builtin type, keep the original value
+
   const data = {
     Type: ruleForm.value.Type,
     Payload: ruleForm.value.Payload,
-    Target: ruleForm.value.Target,
-    TargetID: ruleForm.value.TargetID || 0,
-    TargetType: ruleForm.value.TargetType || '',
+    Target: targetValue,
+    TargetType: targetType,
     Priority: ruleForm.value.Priority ?? 0,
     NoResolve: ruleForm.value.NoResolve,
     Remark: ruleForm.value.Remark || ''
@@ -831,18 +873,45 @@ onMounted(() => {
   border: 1px solid #fbc4c4;
 }
 
-/* 其他目标（节点名或代理组名）标签 */
-.target-tag.other {
+/* 其他 builtin 类型 */
+.target-tag.builtin {
   background: linear-gradient(135deg, #f4f4f5 0%, #e8e8e9 100%);
   color: #606266;
   border: 1px solid #dcdfe6;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
 }
 
-.target-tag.other span {
+/* 代理节点标签 */
+.target-tag.node {
+  background: linear-gradient(135deg, #f4f4f5 0%, #e8e8e9 100%);
+  color: #606266;
+  border: 1px solid #dcdfe6;
+}
+
+.target-tag.node .el-icon {
+  font-size: 13px;
+  color: #909399;
+}
+
+.target-tag.node span {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 代理组标签 */
+.target-tag.group {
+  background: linear-gradient(135deg, #fef8ec 0%, #fdf1e0 100%);
+  color: #e6a23c;
+  border: 1px solid #f5dabc;
+}
+
+.target-tag.group .el-icon {
+  font-size: 13px;
+  color: #e6a23c;
+}
+
+.target-tag.group span {
   max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;

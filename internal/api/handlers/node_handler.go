@@ -6,7 +6,7 @@ import (
 
 	"clash-manager/internal/model"
 	"clash-manager/internal/repository"
-	"clash-manager/internal/service" // Added this import
+	"clash-manager/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -42,13 +42,11 @@ func (h *NodeHandler) CreateNode(c *gin.Context) {
 }
 
 func (h *NodeHandler) UpdateNode(c *gin.Context) {
-	// For simplicity, we just bind and save. Real app might check ID match.
 	var node model.Node
 	if err := c.ShouldBindJSON(&node); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Ensure ID from param matches or is handled
 	idStr := c.Param("id")
 	id, _ := strconv.Atoi(idStr)
 	node.ID = uint(id)

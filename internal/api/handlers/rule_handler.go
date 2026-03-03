@@ -151,6 +151,28 @@ func (h *RuleHandler) ImportRules(c *gin.Context) {
 		return
 	}
 
+	// Fetch all nodes and groups for name matching
+	nodeRepo := &repository.NodeRepository{}
+	nodes, err := nodeRepo.FindAll()
+	if err != nil {
+		fmt.Printf("[ImportRules] Failed to fetch nodes: %v\n", err)
+	}
+	groupRepo := &repository.GroupRepository{}
+	groups, err := groupRepo.FindAll()
+	if err != nil {
+		fmt.Printf("[ImportRules] Failed to fetch groups: %v\n", err)
+	}
+
+	// Build name to ID maps
+	nodeNameToID := make(map[string]uint)
+	for _, n := range nodes {
+		nodeNameToID[n.Name] = n.ID
+	}
+	groupNameToID := make(map[string]uint)
+	for _, g := range groups {
+		groupNameToID[g.Name] = g.ID
+	}
+
 	var rulesToImport []model.Rule
 	priority := 0
 
@@ -166,16 +188,31 @@ func (h *RuleHandler) ImportRules(c *gin.Context) {
 			continue
 		}
 
+		targetName := strings.TrimSpace(parts[2])
+
 		rule := model.Rule{
 			Type:     strings.TrimSpace(parts[0]),
 			Payload:  strings.TrimSpace(parts[1]),
-			Target:   strings.TrimSpace(parts[2]),
 			Priority: priority,
 		}
 
 		// Check for no-resolve option
 		if len(parts) >= 4 && strings.TrimSpace(parts[3]) == "no-resolve" {
 			rule.NoResolve = true
+		}
+
+		// Try to match target to nodes or groups
+		// Priority: node > group > built-in
+		if nodeID, ok := nodeNameToID[targetName]; ok {
+			rule.TargetType = "node"
+			rule.Target = fmt.Sprintf("%d", nodeID)
+		} else if groupID, ok := groupNameToID[targetName]; ok {
+			rule.TargetType = "group"
+			rule.Target = fmt.Sprintf("%d", groupID)
+		} else {
+			// Built-in target (DIRECT, PROXY, REJECT, etc.)
+			rule.Target = targetName
+			rule.TargetType = "builtin"
 		}
 
 		rulesToImport = append(rulesToImport, rule)

@@ -241,22 +241,40 @@ func (s *ConfigService) GenerateConfig() ([]byte, error) {
 	// 5. Build Rules
 	var ruleStrings []string
 	for _, r := range rules {
-		targetName := r.Target
+		var targetName string
 
-		// Try ID resolution first
-		if r.TargetID > 0 {
-			var resolved string
-			var found bool
-			if r.TargetType == "node" {
-				resolved, found = nodeMap[r.TargetID]
-			} else if r.TargetType == "group" {
-				resolved, found = groupMap[r.TargetID]
+		// Resolve target based on TargetType
+		if r.TargetType == "node" {
+			// Target stores node ID as string, parse and lookup
+			var nodeID uint
+			if _, err := fmt.Sscanf(r.Target, "%d", &nodeID); err == nil {
+				if name, ok := nodeMap[nodeID]; ok {
+					targetName = name
+				} else {
+					// Node not found, skip this rule or use fallback
+					continue
+				}
+			} else {
+				// Invalid ID format, skip this rule
+				continue
 			}
-
-			if found {
-				targetName = resolved
+		} else if r.TargetType == "group" {
+			// Target stores group ID as string, parse and lookup
+			var groupID uint
+			if _, err := fmt.Sscanf(r.Target, "%d", &groupID); err == nil {
+				if name, ok := groupMap[groupID]; ok {
+					targetName = name
+				} else {
+					// Group not found, skip this rule or use fallback
+					continue
+				}
+			} else {
+				// Invalid ID format, skip this rule
+				continue
 			}
-			// If not found, targetName remains r.Target (legacy fallback)
+		} else {
+			// builtin type means built-in target (DIRECT, PROXY, REJECT, etc.)
+			targetName = r.Target
 		}
 
 		// Normalize payload for IP-CIDR type (ensure subnet mask is present)
