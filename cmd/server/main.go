@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"clash-manager/internal/config"
 	"clash-manager/internal/repository"
@@ -46,15 +47,24 @@ func main() {
 
 	// 静态文件处理
 	subFS, _ := fs.Sub(web.StaticFiles, "dist")
-	staticHandler := http.FS(subFS)
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
+
+		// 跳过 API 路径（/api 开头）和订阅配置下载路径（/sub/ 开头）
+		if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/sub/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
+			return
+		}
 
 		// 尝试在嵌入的文件系统中打开该文件
 		f, err := subFS.Open(path[1:]) // 移除开头的 "/"
 		if err != nil {
 			// 文件不存在，返回 index.html (交给前端路由处理)
-			indexFile, _ := subFS.Open("index.html")
+			indexFile, err := subFS.Open("index.html")
+			if err != nil {
+				c.String(http.StatusNotFound, "index.html not found")
+				return
+			}
 			defer indexFile.Close()
 
 			// 获取文件信息以读取内容
@@ -64,8 +74,10 @@ func main() {
 		}
 		defer f.Close()
 
-		// 如果文件存在，直接提供服务
-		http.FileServer(staticHandler).ServeHTTP(c.Writer, c.Request)
+		// 如果文件存在，直接读取文件内容并返回（避免 http.FileServer 重写请求路径）
+		stat, _ := f.Stat()
+		contentType := getContentType(path)
+		c.DataFromReader(http.StatusOK, stat.Size(), contentType, f, nil)
 	})
 
 	// 3. Start Server
@@ -86,6 +98,40 @@ func formatPort(port string) string {
 	}
 	// 否则添加 : 前缀
 	return ":" + port
+}
+
+// getContentType 根据文件扩展名返回 MIME 类型
+func getContentType(path string) string {
+	switch {
+	case strings.HasSuffix(path, ".html"):
+		return "text/html; charset=utf-8"
+	case strings.HasSuffix(path, ".css"):
+		return "text/css; charset=utf-8"
+	case strings.HasSuffix(path, ".js"):
+		return "application/javascript; charset=utf-8"
+	case strings.HasSuffix(path, ".json"):
+		return "application/json; charset=utf-8"
+	case strings.HasSuffix(path, ".png"):
+		return "image/png"
+	case strings.HasSuffix(path, ".jpg"), strings.HasSuffix(path, ".jpeg"):
+		return "image/jpeg"
+	case strings.HasSuffix(path, ".gif"):
+		return "image/gif"
+	case strings.HasSuffix(path, ".svg"):
+		return "image/svg+xml"
+	case strings.HasSuffix(path, ".ico"):
+		return "image/x-icon"
+	case strings.HasSuffix(path, ".woff"):
+		return "font/woff"
+	case strings.HasSuffix(path, ".woff2"):
+		return "font/woff2"
+	case strings.HasSuffix(path, ".ttf"):
+		return "font/ttf"
+	case strings.HasSuffix(path, ".eot"):
+		return "application/vnd.ms-fontobject"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 func handleResetAdmin(newPassword string) {

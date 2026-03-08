@@ -15,8 +15,8 @@ type GlobalSetting struct {
 // User represents an administrator
 type User struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 	Username  string         `gorm:"uniqueIndex" json:"username"`
 	Password  string         `json:"-"`                        // Bcrypt hash, never send to client
@@ -26,8 +26,8 @@ type User struct {
 // Node represents a proxy node (SS, Vmess, Trojan, etc.)
 type Node struct {
 	ID          uint           `gorm:"primarykey" json:"id"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	CreatedAt   time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 	Name        string         `json:"name"`
 	Type        string         `json:"type"`
@@ -52,8 +52,8 @@ type Node struct {
 // Rule represents a routing rule
 type Rule struct {
 	ID         uint           `gorm:"primarykey" json:"id"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
+	CreatedAt  time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt  time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 	Type       string         `json:"type"`
 	Payload    string         `json:"payload"`
@@ -70,8 +70,8 @@ type Rule struct {
 // For simplicity, we might store groups in GlobalSetting or a separate table
 type ProxyGroupModel struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 	Name      string         `json:"name"`
 	Type      string         `json:"type"`
@@ -92,8 +92,8 @@ type ProxyNode struct {
 // SubscriptionLog represents a subscription access log
 type SubscriptionLog struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 	UserID    uint           `gorm:"index" json:"user_id"`                    // User who subscribed
 	User      *User          `gorm:"foreignKey:UserID" json:"user,omitempty"` // Association to User
@@ -112,8 +112,8 @@ func (SubscriptionLog) TableName() string {
 // SubscriptionSource represents a third-party subscription source
 type SubscriptionSource struct {
 	ID             uint           `gorm:"primarykey" json:"id"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
+	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 	Name           string         `json:"name"`
 	URL            string         `json:"url"`

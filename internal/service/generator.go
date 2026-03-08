@@ -259,32 +259,58 @@ func (s *ConfigService) GenerateConfig() ([]byte, error) {
 
 		// Resolve target based on TargetType
 		if r.TargetType == "node" {
-			// Target stores node ID as string, parse and lookup
+			// Target may store node ID or node name
 			var nodeID uint
 			if _, err := fmt.Sscanf(r.Target, "%d", &nodeID); err == nil {
+				// Target is a numeric ID, lookup by ID
 				if name, ok := nodeMap[nodeID]; ok {
 					targetName = name
 				} else {
-					// Node not found, skip this rule or use fallback
+					// Node ID not found, skip this rule
 					continue
 				}
 			} else {
-				// Invalid ID format, skip this rule
-				continue
+				// Target is not a number, treat as node name directly
+				// Check if the node exists
+				found := false
+				for _, name := range nodeMap {
+					if name == r.Target {
+						targetName = r.Target
+						found = true
+						break
+					}
+				}
+				if !found {
+					// Node not found by name, skip this rule
+					continue
+				}
 			}
 		} else if r.TargetType == "group" {
-			// Target stores group ID as string, parse and lookup
+			// Target may store group ID or group name
 			var groupID uint
 			if _, err := fmt.Sscanf(r.Target, "%d", &groupID); err == nil {
+				// Target is a numeric ID, lookup by ID
 				if name, ok := groupMap[groupID]; ok {
 					targetName = name
 				} else {
-					// Group not found, skip this rule or use fallback
+					// Group ID not found, skip this rule
 					continue
 				}
 			} else {
-				// Invalid ID format, skip this rule
-				continue
+				// Target is not a number, treat as group name directly
+				// Check if the group exists
+				found := false
+				for _, name := range groupMap {
+					if name == r.Target {
+						targetName = r.Target
+						found = true
+						break
+					}
+				}
+				if !found {
+					// Group not found by name, skip this rule
+					continue
+				}
 			}
 		} else {
 			// builtin type means built-in target (DIRECT, PROXY, REJECT, etc.)
@@ -508,12 +534,51 @@ func (s *ConfigService) ValidateConfig() (*ValidationResult, error) {
 			// Check if target is a built-in or valid name
 			if rule.Target == "DIRECT" || rule.Target == "REJECT" {
 				targetExists = true
-			}
-			// Check groups
-			for _, g := range groups {
-				if g.Name == rule.Target {
-					targetExists = true
-					break
+			} else if rule.TargetType == "node" || rule.TargetType == "group" {
+				// For node/group types, try to parse target as ID first (legacy data support)
+				var id uint
+				if _, err := fmt.Sscanf(rule.Target, "%d", &id); err == nil {
+					if rule.TargetType == "node" {
+						for _, n := range nodes {
+							if n.ID == id {
+								targetExists = true
+								break
+							}
+						}
+					} else if rule.TargetType == "group" {
+						for _, g := range groups {
+							if g.ID == id {
+								targetExists = true
+								break
+							}
+						}
+					}
+				} else {
+					// Not an ID, check if it's a name
+					if rule.TargetType == "group" {
+						for _, g := range groups {
+							if g.Name == rule.Target {
+								targetExists = true
+								break
+							}
+						}
+					} else {
+						// For node type, check by name
+						for _, n := range nodes {
+							if n.Name == rule.Target {
+								targetExists = true
+								break
+							}
+						}
+					}
+				}
+			} else {
+				// For builtin type or when targetType is not set, check groups by name
+				for _, g := range groups {
+					if g.Name == rule.Target {
+						targetExists = true
+						break
+					}
 				}
 			}
 		}

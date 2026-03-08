@@ -568,19 +568,32 @@ const handleSave = async () => {
 
   // Parse Target value based on TargetType
   let targetValue = ruleForm.value.Target
+  let targetID = 0
   const targetType = ruleForm.value.TargetType || 'builtin'
 
   if (targetType === 'node' && targetValue.startsWith('node:')) {
     // Extract ID from "node:ID:Name" format
     const parts = targetValue.split(':')
     if (parts.length >= 2) {
-      targetValue = String(parts[1]) // Store ID as string
+      targetID = parseInt(parts[1], 10)
+      // Extract name for target field
+      if (parts.length >= 3) {
+        targetValue = parts.slice(2).join(':') // Use the node name
+      } else {
+        targetValue = parts[1] // Fallback to ID if name not available
+      }
     }
   } else if (targetType === 'group' && targetValue.startsWith('group:')) {
     // Extract ID from "group:ID:Name" format
     const parts = targetValue.split(':')
     if (parts.length >= 2) {
-      targetValue = String(parts[1]) // Store ID as string
+      targetID = parseInt(parts[1], 10)
+      // Extract name for target field
+      if (parts.length >= 3) {
+        targetValue = parts.slice(2).join(':') // Use the group name
+      } else {
+        targetValue = parts[1] // Fallback to ID if name not available
+      }
     }
   }
   // For builtin type, keep the original value
@@ -590,6 +603,7 @@ const handleSave = async () => {
     type: ruleForm.value.Type,
     payload: ruleForm.value.Payload,
     target: targetValue,
+    target_id: targetID,
     target_type: targetType,
     priority: ruleForm.value.Priority ?? 0,
     no_resolve: ruleForm.value.NoResolve,
@@ -604,6 +618,8 @@ const handleSave = async () => {
     ElMessage.success('创建成功')
   }
   formDialogVisible.value = false
+  // 重新加载节点和策略组数据，确保规则列表能正确显示目标名称
+  await Promise.all([loadGroups(), loadNodes()])
   loadRules()
   loadAvailableTags() // Refresh available tags
 }
@@ -612,6 +628,8 @@ const handleDelete = async (row) => {
   await ElMessageBox.confirm('确定删除该规则吗？', '提示', { type: 'warning' })
   await deleteRule(row.id)
   ElMessage.success('删除成功')
+  // 重新加载节点和策略组数据，确保规则列表能正确显示目标名称
+  await Promise.all([loadGroups(), loadNodes()])
   loadRules()
 }
 
@@ -703,6 +721,8 @@ const handleImport = async () => {
     ElMessage.success(`成功导入 ${result.count} 条规则`)
     importDialogVisible.value = false
     importContent.value = ''
+    // 重新加载节点和策略组数据，确保规则列表能正确显示目标名称
+    await Promise.all([loadGroups(), loadNodes()])
     loadRules()
   } catch (error) {
     ElMessage.error('导入失败: ' + (error.message || '未知错误'))
@@ -720,10 +740,10 @@ const loadAvailableTags = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 先加载节点和策略组数据，确保规则列表能正确显示目标名称
+  await Promise.all([loadGroups(), loadNodes()])
   loadRules()
-  loadGroups()
-  loadNodes()
   loadAvailableTags()
 })
 </script>
