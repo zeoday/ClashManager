@@ -140,3 +140,44 @@ func (r *RuleRepository) GetAllTags() ([]string, error) {
 		Error
 	return tags, err
 }
+
+// DeleteInvalidRules deletes rules that reference non-existent nodes or groups
+func (r *RuleRepository) DeleteInvalidRules(validNodeIDs, validGroupIDs []uint) (int64, error) {
+	nodeIDMap := make(map[uint]bool)
+	for _, id := range validNodeIDs {
+		nodeIDMap[id] = true
+	}
+	groupIDMap := make(map[uint]bool)
+	for _, id := range validGroupIDs {
+		groupIDMap[id] = true
+	}
+
+	// Find all rules with invalid target references
+	var rulesToDelete []model.Rule
+	err := DB.Where("target_id > 0").Find(&rulesToDelete).Error
+	if err != nil {
+		return 0, err
+	}
+
+	var invalidRuleIDs []uint
+	for _, rule := range rulesToDelete {
+		isValid := false
+		if rule.TargetType == "node" && nodeIDMap[rule.TargetID] {
+			isValid = true
+		} else if rule.TargetType == "group" && groupIDMap[rule.TargetID] {
+			isValid = true
+		}
+
+		if !isValid {
+			invalidRuleIDs = append(invalidRuleIDs, rule.ID)
+		}
+	}
+
+	// Delete invalid rules
+	if len(invalidRuleIDs) > 0 {
+		result := DB.Delete(&model.Rule{}, invalidRuleIDs)
+		return result.RowsAffected, result.Error
+	}
+
+	return 0, nil
+}

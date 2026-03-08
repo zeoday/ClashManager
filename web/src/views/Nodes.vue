@@ -25,6 +25,14 @@
         <el-table-column prop="Server" label="服务器" min-width="180" show-overflow-tooltip />
         <el-table-column prop="Port" label="端口" min-width="80" />
         <el-table-column prop="Network" label="传输" min-width="80" />
+        <el-table-column label="来源" min-width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.Source === 'subscription'" type="warning" size="small">
+              {{ row.SourceName || '订阅' }}
+            </el-tag>
+            <el-tag v-else type="info" size="small">手动</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" min-width="80">
           <template #default="{ row }">
             <el-tag :type="row.TLS ? 'success' : 'info'" size="small">

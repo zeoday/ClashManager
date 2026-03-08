@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"gorm.io/gorm"
@@ -38,6 +39,9 @@ type Node struct {
 	Host        string // HTTP Host / SNI
 	ALPN        string // h3
 	ExtraConfig string // JSON for other fields like headers, flow, etc.
+	Source      string `gorm:"default:manual"` // Source: manual (手动创建) or subscription (订阅同步)
+	SourceID    uint   // ID of the subscription source if from subscription
+	SourceName  string // Name of the subscription source for display
 }
 
 // Rule represents a routing rule
@@ -58,12 +62,40 @@ type Rule struct {
 // For simplicity, we might store groups in GlobalSetting or a separate table
 type ProxyGroupModel struct {
 	gorm.Model
-	Name     string `gorm:"uniqueIndex"`
-	Type     string // select, url-test
-	ProxyIDs string // JSON array of node IDs: [1, 2, 3]
-	Use      string // JSON array of provider names/other groups
-	URL      string
-	Interval int
+	Name     string `gorm:"uniqueIndex" json:"name"`
+	Type     string `json:"type"`     // select, url-test
+	ProxyIDs string `json:"proxyIDs"` // JSON array of node IDs: [1, 2, 3]
+	Use      string `json:"use"`      // JSON array of provider names/other groups
+	URL      string `json:"url"`
+	Interval int    `json:"interval"`
+	Source   string `gorm:"default:user" json:"source"` // Source: user (手动创建) or subscription (订阅同步)
+}
+
+// MarshalJSON implements custom JSON marshaling to capitalize first letter
+func (p ProxyGroupModel) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID        uint      `json:"ID"`
+		CreatedAt time.Time `json:"CreatedAt"`
+		UpdatedAt time.Time `json:"UpdatedAt"`
+		Name      string    `json:"Name"`
+		Type      string    `json:"Type"`
+		ProxyIDs  string    `json:"ProxyIDs"`
+		Use       string    `json:"Use"`
+		URL       string    `json:"URL"`
+		Interval  int       `json:"Interval"`
+		Source    string    `json:"Source"`
+	}{
+		ID:        p.ID,
+		CreatedAt: p.CreatedAt,
+		UpdatedAt: p.UpdatedAt,
+		Name:      p.Name,
+		Type:      p.Type,
+		ProxyIDs:  p.ProxyIDs,
+		Use:       p.Use,
+		URL:       p.URL,
+		Interval:  p.Interval,
+		Source:    p.Source,
+	})
 }
 
 // ProxyNode represents a node reference in a proxy group
@@ -104,6 +136,36 @@ type SubscriptionSource struct {
 	NodeTag        string     `json:"nodeTag"`                          // 导入节点的标签
 	SyncMode       string     `gorm:"default:append" json:"syncMode"`   // 同步模式: append, replace, smart
 	Error          string     `json:"error"`                            // 最后一次错误信息
+}
+
+// MarshalJSON implements custom JSON marshaling to capitalize first letter
+func (s SubscriptionSource) MarshalJSON() ([]byte, error) {
+	type Alias SubscriptionSource
+	return json.Marshal(struct {
+		ID             uint       `json:"ID"`
+		CreatedAt      time.Time  `json:"CreatedAt"`
+		UpdatedAt      time.Time  `json:"UpdatedAt"`
+		Name           string     `json:"Name"`
+		URL            string     `json:"URL"`
+		Enabled        bool       `json:"Enabled"`
+		UpdateInterval int        `json:"UpdateInterval"`
+		LastSync       *time.Time `json:"LastSync"`
+		NodeTag        string     `json:"NodeTag"`
+		SyncMode       string     `json:"SyncMode"`
+		Error          string     `json:"Error"`
+	}{
+		ID:             s.ID,
+		CreatedAt:      s.CreatedAt,
+		UpdatedAt:      s.UpdatedAt,
+		Name:           s.Name,
+		URL:            s.URL,
+		Enabled:        s.Enabled,
+		UpdateInterval: s.UpdateInterval,
+		LastSync:       s.LastSync,
+		NodeTag:        s.NodeTag,
+		SyncMode:       s.SyncMode,
+		Error:          s.Error,
+	})
 }
 
 // TableName specifies the table name for SubscriptionSource

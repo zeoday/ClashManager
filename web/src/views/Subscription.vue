@@ -81,7 +81,11 @@
             <el-icon size="20"><svg viewBox="0 0 1024 1024" width="20" height="20"><path fill="currentColor" d="M128 192h768v128H192v640h640v-64h64v128H128V192z"></path><path fill="currentColor" d="M384 384h384v64H384v320h320v-64h64v128H384V384z"></path></svg></el-icon>
             <span>配置预览</span>
           </div>
-          <el-button type="primary" :icon="View" @click="loadConfig">加载配置</el-button>
+          <div style="display: flex; gap: 10px;">
+            <el-button type="success" :icon="CircleCheck" @click="validateConfig" :loading="validating">校验配置</el-button>
+            <el-button type="warning" :icon="Delete" @click="cleanupRules" :loading="cleaning">清理无效规则</el-button>
+            <el-button type="primary" :icon="View" @click="loadConfig">加载配置</el-button>
+          </div>
         </div>
       </template>
 
@@ -93,9 +97,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { View, RefreshRight } from '@element-plus/icons-vue'
-import { getSubscriptionURL, refreshToken } from '@/api/subscription'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { View, RefreshRight, CircleCheck, Delete } from '@element-plus/icons-vue'
+import { getSubscriptionURL, refreshToken, validateConfig as validateConfigAPI, cleanupInvalidRules } from '@/api/subscription'
 import axios from 'axios'
 
 const subscriptionUrl = ref('')
@@ -104,6 +108,8 @@ const qrcodeUrl = ref('')
 const configContent = ref('')
 const loading = ref(false)
 const refreshing = ref(false)
+const validating = ref(false)
+const cleaning = ref(false)
 
 // 加载订阅信息
 const loadSubscription = async () => {
@@ -170,6 +176,84 @@ const loadConfig = async () => {
   } catch (err) {
     console.error('加载配置失败:', err)
     ElMessage.error('加载配置失败: ' + (err.response?.data?.error || err.message))
+  }
+}
+
+// 校验配置
+const validateConfig = async () => {
+  validating.value = true
+  try {
+    const result = await validateConfigAPI()
+
+    if (result.valid) {
+      if (result.errors && result.errors.length > 0) {
+        // 有警告但没有错误
+        const warnings = result.errors.filter(e => e.type === 'warning')
+        if (warnings.length > 0) {
+          ElMessage.warning(`配置校验通过，但有 ${warnings.length} 个警告`)
+          console.log('警告详情:', warnings)
+        } else {
+          ElMessage.success('配置校验通过！')
+        }
+      } else {
+        ElMessage.success('配置校验通过！')
+      }
+    } else {
+      // 有错误
+      const errors = result.errors || []
+      const errorCount = errors.filter(e => e.type === 'error').length
+      const warningCount = errors.filter(e => e.type === 'warning').length
+
+      let message = `配置校验失败：发现 ${errorCount} 个错误`
+      if (warningCount > 0) {
+        message += `，${warningCount} 个警告`
+      }
+
+      ElMessage.error(message)
+
+      // 显示详细的错误信息
+      console.error('配置校验错误详情:', errors)
+
+      // 可选：在界面上显示详细错误
+      const errorDetails = errors.map((e, i) => {
+        const icon = e.type === 'error' ? '❌' : '⚠️'
+        return `${icon} ${e.message}`
+      }).join('\n')
+
+      configContent.value = `配置校验结果：\n\n${errorDetails}`
+    }
+  } catch (err) {
+    console.error('校验配置失败:', err)
+    ElMessage.error('校验失败：' + (err.response?.data?.error || err.message))
+  } finally {
+    validating.value = false
+  }
+}
+
+// 清理无效规则
+const cleanupRules = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '这将删除所有引用不存在节点或分组的规则，操作不可恢复。确定继续吗？',
+      '确认清理',
+      { type: 'warning' }
+    )
+
+    cleaning.value = true
+    const result = await cleanupInvalidRules()
+
+    if (result.deletedCount > 0) {
+      ElMessage.success(`已清理 ${result.deletedCount} 条无效规则`)
+    } else {
+      ElMessage.info('没有发现无效规则')
+    }
+  } catch (err) {
+    if (err !== 'cancel') {
+      console.error('清理规则失败:', err)
+      ElMessage.error('清理失败：' + (err.response?.data?.error || err.message))
+    }
+  } finally {
+    cleaning.value = false
   }
 }
 

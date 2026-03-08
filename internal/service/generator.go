@@ -211,10 +211,16 @@ func (s *ConfigService) GenerateConfig() ([]byte, error) {
 		if g.ProxyIDs != "" {
 			var nodeIDs []uint
 			if err := json.Unmarshal([]byte(g.ProxyIDs), &nodeIDs); err == nil {
+				missingNodes := []uint{}
 				for _, id := range nodeIDs {
 					if name, ok := nodeMap[id]; ok {
 						pg.Proxies = append(pg.Proxies, name)
+					} else {
+						missingNodes = append(missingNodes, id)
 					}
+				}
+				if len(missingNodes) > 0 {
+					fmt.Printf("警告: 策略组 \"%s\" 引用了 %d 个不存在的节点: %v\n", g.Name, len(missingNodes), missingNodes)
 				}
 			}
 		}
@@ -225,6 +231,14 @@ func (s *ConfigService) GenerateConfig() ([]byte, error) {
 			json.Unmarshal([]byte(g.Use), &uList)
 			pg.Use = uList
 		}
+
+		// Add all groups, even empty ones (with DIRECT fallback for empty groups)
+		if len(pg.Proxies) == 0 && len(pg.Use) == 0 {
+			// Empty group - add DIRECT as fallback to avoid Clash error
+			pg.Proxies = []string{"DIRECT"}
+			fmt.Printf("警告: 策略组 \"%s\" 没有有效节点，已添加 DIRECT 作为后备\n", g.Name)
+		}
+
 		proxyGroups = append(proxyGroups, pg)
 	}
 

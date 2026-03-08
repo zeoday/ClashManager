@@ -23,6 +23,12 @@ func (r *NodeRepository) FindByID(id uint) (*model.Node, error) {
 	return &node, err
 }
 
+func (r *NodeRepository) FindByName(name string) (*model.Node, error) {
+	var node model.Node
+	err := DB.Where("name = ?", name).First(&node).Error
+	return &node, err
+}
+
 func (r *NodeRepository) Update(node *model.Node) error {
 	return DB.Save(node).Error
 }

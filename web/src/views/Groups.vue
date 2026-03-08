@@ -13,19 +13,29 @@
 
       <el-table :data="groups" stripe style="width: 100%">
         <el-table-column prop="ID" label="ID" min-width="60" />
-        <el-table-column prop="Name" label="名称" min-width="120" />
-        <el-table-column prop="Type" label="类型" min-width="120">
+        <el-table-column prop="Name" label="名称" min-width="150" />
+        <el-table-column prop="Type" label="类型" min-width="100">
           <template #default="{ row }">
             <el-tag :type="row.Type === 'select' ? 'primary' : 'success'">
               {{ row.Type }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="ProxyNodes" label="包含节点" min-width="250">
+        <el-table-column prop="Source" label="来源" min-width="100">
           <template #default="{ row }">
-            <el-tag v-for="proxy in displayNodes(row)" :key="proxy.ID || proxy" size="small" style="margin-right: 5px;">
+            <el-tag :type="getSourceType(row.Source)" size="small">
+              {{ getSourceText(row.Source) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="ProxyNodes" label="包含节点" min-width="280">
+          <template #default="{ row }">
+            <el-tag v-for="proxy in displayNodes(row).slice(0, 5)" :key="proxy.ID || proxy" size="small" style="margin-right: 5px;">
               {{ proxy.Name || proxy }}
             </el-tag>
+            <span v-if="displayNodes(row).length > 5" style="color: #909399; font-size: 12px;">
+              ...等{{ displayNodes(row).length }}个
+            </span>
             <span v-if="displayNodes(row).length === 0" style="color: #909399;">无</span>
           </template>
         </el-table-column>
@@ -41,34 +51,33 @@
     </el-card>
 
     <!-- 新增/编辑代理组对话框 -->
-    <el-dialog v-model="formDialogVisible" :title="isEdit ? '编辑代理组' : '新增代理组'" width="500px">
+    <el-dialog v-model="formDialogVisible" :title="isEdit ? '编辑代理组' : '新增代理组'" width="700px">
       <el-form :model="groupForm" label-width="100px">
         <el-form-item label="名称">
           <el-input v-model="groupForm.Name" placeholder="请输入代理组名称" />
         </el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="groupForm.Type" placeholder="请选择类型">
+          <el-select v-model="groupForm.Type" placeholder="请选择类型" style="width: 100%;">
             <el-option label="手动选择" value="select" />
             <el-option label="自动测速" value="url-test" />
             <el-option label="负载均衡" value="load-balance" />
           </el-select>
         </el-form-item>
         <el-form-item label="包含节点">
-          <el-select
+          <el-transfer
             v-model="groupForm.ProxyIDs"
-            multiple
-            placeholder="请选择节点"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="node in nodes"
-              :key="node.ID"
-              :label="node.Name"
-              :value="node.ID"
-            />
-          </el-select>
-          <div style="color: #909399; font-size: 12px; margin-top: 5px;">
-            已选择 {{ groupForm.ProxyIDs.length }} 个节点
+            :data="transferData"
+            :props="{
+              key: 'ID',
+              label: 'label'
+            }"
+            filterable
+            filter-placeholder="搜索节点"
+            :titles="['可选节点', '已选节点']"
+            style="text-align: left; justify-content: flex-start;"
+          />
+          <div style="color: #909399; font-size: 12px; margin-top: 8px;">
+            已选择 {{ groupForm.ProxyIDs.length }} / {{ nodes.length }} 个节点
           </div>
         </el-form-item>
         <el-form-item label="测试URL">
@@ -87,7 +96,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getGroups, createGroup, updateGroup, deleteGroup } from '@/api/groups'
@@ -104,6 +113,15 @@ const groupForm = ref({
   ProxyIDs: [],
   URL: 'http://www.gstatic.com/generate_204',
   Interval: 300
+})
+
+// 穿梭框数据源
+const transferData = computed(() => {
+  return nodes.value.map(node => ({
+    ID: node.ID,
+    label: node.Name,
+    disabled: false
+  }))
 })
 
 const loadGroups = async () => {
@@ -128,6 +146,22 @@ const displayNodes = (row) => {
     }
   }
   return []
+}
+
+const getSourceText = (source) => {
+  const map = {
+    'local': '本地',
+    'remote': '远程'
+  }
+  return map[source] || source
+}
+
+const getSourceType = (source) => {
+  const map = {
+    'local': 'info',
+    'remote': 'warning'
+  }
+  return map[source] || ''
 }
 
 const loadNodes = async () => {
@@ -155,7 +189,8 @@ const handleEdit = async (row) => {
   let proxyIDs = []
   if (row.ProxyIDs) {
     try {
-      proxyIDs = JSON.parse(row.ProxyIDs)
+      const parsed = JSON.parse(row.ProxyIDs)
+      proxyIDs = Array.isArray(parsed) ? parsed : []
     } catch {
       proxyIDs = []
     }
@@ -254,5 +289,49 @@ onMounted(() => {
   background: #fafafa;
   color: #606266;
   font-weight: 500;
+}
+
+/* 穿梭框样式优化 */
+:deep(.el-transfer) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 580px;
+}
+
+:deep(.el-transfer-panel) {
+  width: 240px;
+  flex: 0 0 240px;
+}
+
+:deep(.el-transfer__buttons) {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+:deep(.el-transfer__button) {
+  display: block;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 6px;
+  transition: all 0.3s;
+}
+
+:deep(.el-transfer__button:hover) {
+  transform: scale(1.05);
+}
+
+:deep(.el-transfer__button.is-with-texts) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.el-transfer__button .el-icon) {
+  font-size: 16px;
 }
 </style>

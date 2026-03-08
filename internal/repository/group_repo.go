@@ -3,12 +3,42 @@ package repository
 import (
 	"clash-manager/internal/model"
 	"encoding/json"
+	"time"
 )
 
 // GroupWithNodes represents a proxy group with resolved node names
 type GroupWithNodes struct {
 	model.ProxyGroupModel
 	ProxyNodes []model.ProxyNode `json:"ProxyNodes"`
+}
+
+// MarshalJSON implements custom JSON marshaling for GroupWithNodes
+func (g GroupWithNodes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID         uint              `json:"ID"`
+		CreatedAt  time.Time         `json:"CreatedAt"`
+		UpdatedAt  time.Time         `json:"UpdatedAt"`
+		Name       string            `json:"Name"`
+		Type       string            `json:"Type"`
+		ProxyIDs   string            `json:"ProxyIDs"`
+		Use        string            `json:"Use"`
+		URL        string            `json:"URL"`
+		Interval   int               `json:"Interval"`
+		Source     string            `json:"Source"`
+		ProxyNodes []model.ProxyNode `json:"ProxyNodes"`
+	}{
+		ID:         g.ID,
+		CreatedAt:  g.CreatedAt,
+		UpdatedAt:  g.UpdatedAt,
+		Name:       g.Name,
+		Type:       g.Type,
+		ProxyIDs:   g.ProxyIDs,
+		Use:        g.Use,
+		URL:        g.URL,
+		Interval:   g.Interval,
+		Source:     g.Source,
+		ProxyNodes: g.ProxyNodes,
+	})
 }
 
 type GroupRepository struct{}
@@ -74,7 +104,7 @@ func (r *GroupRepository) FindAllWithNodes() ([]GroupWithNodes, error) {
 	return result, nil
 }
 
-// Delete 软删除策略组，同时删除引用该策略组的规则
+// Delete 硬删除策略组，同时删除引用该策略组的规则
 func (r *GroupRepository) Delete(id uint) error {
 	// 开启事务
 	tx := DB.Begin()
@@ -84,14 +114,14 @@ func (r *GroupRepository) Delete(id uint) error {
 		}
 	}()
 
-	// 1. 删除引用该策略组的规则（软删除）
-	if err := tx.Where("target_id = ? AND target_type = ?", id, "group").Delete(&model.Rule{}).Error; err != nil {
+	// 1. 删除引用该策略组的规则（硬删除）
+	if err := tx.Unscoped().Where("target_id = ? AND target_type = ?", id, "group").Delete(&model.Rule{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// 2. 软删除策略组
-	if err := tx.Delete(&model.ProxyGroupModel{}, id).Error; err != nil {
+	// 2. 硬删除策略组
+	if err := tx.Unscoped().Delete(&model.ProxyGroupModel{}, id).Error; err != nil {
 		tx.Rollback()
 		return err
 	}

@@ -44,3 +44,17 @@ export function deleteOldLogs(days) {
     params: { days }
   })
 }
+
+export function validateConfig() {
+  return request({
+    url: '/subscription/preview',
+    method: 'get'
+  })
+}
+
+export function cleanupInvalidRules() {
+  return request({
+    url: '/subscription/cleanup-rules',
+    method: 'post'
+  })
+}

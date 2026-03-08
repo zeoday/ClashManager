@@ -13,12 +13,14 @@ import (
 type SubscriptionHandler struct {
 	UserRepo *repository.UserRepository
 	LogRepo  *repository.SubscriptionLogRepository
+	RuleRepo *repository.RuleRepository
 }
 
 func NewSubscriptionHandler() *SubscriptionHandler {
 	return &SubscriptionHandler{
 		UserRepo: &repository.UserRepository{},
 		LogRepo:  &repository.SubscriptionLogRepository{},
+		RuleRepo: &repository.RuleRepository{},
 	}
 }
 
@@ -245,4 +247,50 @@ func (h *SubscriptionHandler) PreviewConfig(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, validationResult)
+}
+
+// CleanupInvalidRules removes rules that reference non-existent nodes or groups
+func (h *SubscriptionHandler) CleanupInvalidRules(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	// Verify user exists
+	_, err := h.UserRepo.FindByID(userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Get valid node and group IDs
+	configService := service.NewConfigService()
+	nodes, err := configService.NodeRepo.FindAll()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get nodes"})
+		return
+	}
+	groups, err := configService.GroupRepo.FindAll()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get groups"})
+		return
+	}
+
+	validNodeIDs := make([]uint, len(nodes))
+	for i, n := range nodes {
+		validNodeIDs[i] = n.ID
+	}
+	validGroupIDs := make([]uint, len(groups))
+	for i, g := range groups {
+		validGroupIDs[i] = g.ID
+	}
+
+	// Delete invalid rules
+	deletedCount, err := h.RuleRepo.DeleteInvalidRules(validNodeIDs, validGroupIDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "清理完成",
+		"deletedCount": deletedCount,
+	})
 }
