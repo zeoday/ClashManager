@@ -190,13 +190,21 @@ const validateConfig = async () => {
         // 有警告但没有错误
         const warnings = result.errors.filter(e => e.type === 'warning')
         if (warnings.length > 0) {
-          ElMessage.warning(`配置校验通过，但有 ${warnings.length} 个警告`)
-          console.log('警告详情:', warnings)
+          ElMessage.warning(`配置校验通过，但有 ${warnings.length} 个警告，下方查看详情`)
+
+          // 显示警告详情
+          const warningDetails = warnings.map((e, i) => {
+            return `⚠️ 警告 ${i + 1}: ${e.message}\n${e.suggestion ? '💡 建议: ' + e.suggestion : ''}`
+          }).join('\n\n')
+
+          configContent.value = `配置校验结果：✅ 通过，但有 ${warnings.length} 个警告\n\n${warningDetails}`
         } else {
           ElMessage.success('配置校验通过！')
+          configContent.value = ''
         }
       } else {
         ElMessage.success('配置校验通过！')
+        configContent.value = ''
       }
     } else {
       // 有错误
@@ -212,13 +220,11 @@ const validateConfig = async () => {
       ElMessage.error(message)
 
       // 显示详细的错误信息
-      console.error('配置校验错误详情:', errors)
-
-      // 可选：在界面上显示详细错误
       const errorDetails = errors.map((e, i) => {
         const icon = e.type === 'error' ? '❌' : '⚠️'
-        return `${icon} ${e.message}`
-      }).join('\n')
+        const typeLabel = e.type === 'error' ? '错误' : '警告'
+        return `${icon} ${typeLabel} ${i + 1}: ${e.message}\n${e.suggestion ? '💡 建议: ' + e.suggestion : ''}`
+      }).join('\n\n')
 
       configContent.value = `配置校验结果：\n\n${errorDetails}`
     }

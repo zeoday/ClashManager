@@ -305,8 +305,8 @@ func (s *ConfigService) GenerateConfig() ([]byte, error) {
 		}
 		ruleStrings = append(ruleStrings, line)
 	}
-	// Add Catch-All
-	ruleStrings = append(ruleStrings, "MATCH,Proxy")
+	// Add Catch-All (默认直连，未匹配规则的流量不经过代理)
+	ruleStrings = append(ruleStrings, "MATCH,Direct")
 
 	config.Rules = ruleStrings
 
