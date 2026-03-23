@@ -47,6 +47,37 @@ type Node struct {
 	Source      string         `json:"source"`
 	SourceID    uint           `json:"source_id"`
 	SourceName  string         `json:"source_name"`
+
+	// Reality 字段
+	RealityPublicKey string `json:"reality_public_key,omitempty" gorm:"column:reality_public_key"`
+	RealityShortID   string `json:"reality_short_id,omitempty" gorm:"column:reality_short_id"`
+
+	// UTLS 字段
+	ClientFingerprint string `json:"client_fingerprint,omitempty" gorm:"column:client_fingerprint"`
+
+	// Hysteria2 字段
+	UpMbps   int `json:"up_mbps,omitempty" gorm:"column:up_mbps"`
+	DownMbps int `json:"down_mbps,omitempty" gorm:"column:down_mbps"`
+
+	// WireGuard 字段
+	PublicKey  string `json:"public_key,omitempty" gorm:"column:public_key"`
+	PrivateKey string `json:"private_key,omitempty" gorm:"column:private_key"`
+	MTU        int    `json:"mtu,omitempty" gorm:"column:mtu"`
+
+	// TUIC 字段
+	CongestionControl string `json:"congestion_control,omitempty" gorm:"column:congestion_control"`
+
+	// 通用字段
+	Flow            string `json:"flow,omitempty" gorm:"column:flow"`
+	ServiceName     string `json:"service_name,omitempty" gorm:"column:service_name"`
+	MaxEarlyData    int    `json:"max_early_data,omitempty" gorm:"column:max_early_data"`
+	EarlyDataHeader string `json:"early_data_header,omitempty" gorm:"column:early_data_header"`
+
+	// SOCKS5/HTTP 认证
+	Username string `json:"username,omitempty" gorm:"column:username"`
+
+	// Multiplex 支持
+	Multiplex bool `json:"multiplex,omitempty" gorm:"column:multiplex"`
 }
 
 // Rule represents a routing rule

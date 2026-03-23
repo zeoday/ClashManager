@@ -101,11 +101,17 @@ func (h *SubscriptionHandler) GetSubscriptionURL(c *gin.Context) {
 		user.Token = token
 	}
 
-	subURL := scheme + "://" + host + "/sub/" + user.Token
+	baseURL := scheme + "://" + host + "/sub/" + user.Token
+
+	// Generate both Clash and Sing-Box URLs
+	clashURL := baseURL
+	singboxURL := baseURL + "?format=singbox"
 
 	c.JSON(http.StatusOK, gin.H{
-		"url":   subURL,
-		"token": user.Token,
+		"url":         clashURL,   // 保持兼容性，默认返回 Clash URL
+		"clash_url":   clashURL,   // Clash 订阅链接
+		"singbox_url": singboxURL, // Sing-Box 订阅链接
+		"token":       user.Token,
 	})
 }
 

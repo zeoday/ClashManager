@@ -21,13 +21,30 @@
         </template>
 
         <el-form label-width="100px">
-          <el-form-item label="订阅地址">
+          <el-form-item label="Clash订阅">
             <el-input
-              :model-value="subscriptionUrl"
+              :model-value="clashUrl"
               readonly
             >
+              <template #prepend>
+                <el-tag type="success" size="small">Clash</el-tag>
+              </template>
               <template #append>
-                <el-button @click="copyUrl">复制</el-button>
+                <el-button @click="copyClashUrl">复制</el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item label="Sing-Box订阅">
+            <el-input
+              :model-value="singboxUrl"
+              readonly
+            >
+              <template #prepend>
+                <el-tag type="warning" size="small">Sing-Box</el-tag>
+              </template>
+              <template #append>
+                <el-button @click="copySingboxUrl">复制</el-button>
               </template>
             </el-input>
           </el-form-item>
@@ -50,9 +67,9 @@
           :closable="false"
           show-icon
         >
-          <p>1. 复制上方订阅链接或Token</p>
-          <p>2. 在Clash客户端中添加订阅</p>
-          <p>3. 客户端会自动获取最新配置</p>
+          <p>1. 根据客户端类型复制对应的订阅链接</p>
+          <p>2. <strong>Clash订阅</strong>：适用于 Clash、Clash Verge、Clash Meta 等客户端</p>
+          <p>3. <strong>Sing-Box订阅</strong>：适用于 Sing-Box、SFM 等客户端</p>
           <p>4. 如需更换订阅地址，点击右上角"刷新Token"按钮</p>
         </el-alert>
       </el-card>
@@ -64,12 +81,16 @@
               <el-icon size="20"><svg viewBox="0 0 1024 1024" width="20" height="20"><path fill="currentColor" d="M128 192h768v128H192v640h640v-64h64v128H128V192z"></path><path fill="currentColor" d="M384 384h384v64H384v320h320v-64h64v128H384V384z"></path></svg></el-icon>
               <span>二维码</span>
             </div>
+            <el-radio-group v-model="qrcodeType" size="small">
+              <el-radio-button label="clash">Clash</el-radio-button>
+              <el-radio-button label="singbox">Sing-Box</el-radio-button>
+            </el-radio-group>
           </div>
         </template>
 
         <div class="qrcode-container">
           <img :src="qrcodeUrl" alt="订阅二维码" />
-          <p>使用Clash客户端扫描二维码导入</p>
+          <p>{{ qrcodeType === 'clash' ? '使用Clash客户端扫描二维码导入' : '使用Sing-Box客户端扫描二维码导入' }}</p>
         </div>
       </el-card>
     </div>
@@ -81,7 +102,11 @@
             <el-icon size="20"><svg viewBox="0 0 1024 1024" width="20" height="20"><path fill="currentColor" d="M128 192h768v128H192v640h640v-64h64v128H128V192z"></path><path fill="currentColor" d="M384 384h384v64H384v320h320v-64h64v128H384V384z"></path></svg></el-icon>
             <span>配置预览</span>
           </div>
-          <div style="display: flex; gap: 10px;">
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <el-radio-group v-model="previewFormat" size="small">
+              <el-radio-button label="clash">Clash</el-radio-button>
+              <el-radio-button label="singbox">Sing-Box</el-radio-button>
+            </el-radio-group>
             <el-button type="success" :icon="CircleCheck" @click="validateConfig" :loading="validating">校验配置</el-button>
             <el-button type="warning" :icon="Delete" @click="cleanupRules" :loading="cleaning">清理无效规则</el-button>
             <el-button type="primary" :icon="View" @click="loadConfig">加载配置</el-button>
@@ -96,20 +121,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { View, RefreshRight, CircleCheck, Delete } from '@element-plus/icons-vue'
 import { getSubscriptionURL, refreshToken, validateConfig as validateConfigAPI, cleanupInvalidRules } from '@/api/subscription'
 import axios from 'axios'
 
 const subscriptionUrl = ref('')
+const clashUrl = ref('')
+const singboxUrl = ref('')
 const token = ref('')
-const qrcodeUrl = ref('')
+const qrcodeType = ref('clash')
+const previewFormat = ref('clash')
 const configContent = ref('')
 const loading = ref(false)
 const refreshing = ref(false)
 const validating = ref(false)
 const cleaning = ref(false)
+
+// 计算当前显示的二维码URL
+const qrcodeUrl = computed(() => {
+  const url = qrcodeType.value === 'clash' ? clashUrl.value : singboxUrl.value
+  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`
+})
 
 // 加载订阅信息
 const loadSubscription = async () => {
@@ -117,8 +151,9 @@ const loadSubscription = async () => {
   try {
     const data = await getSubscriptionURL()
     subscriptionUrl.value = data.url
+    clashUrl.value = data.clash_url || data.url
+    singboxUrl.value = data.singbox_url || (data.url + '?format=singbox')
     token.value = data.token
-    qrcodeUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.url)}`
   } catch {
     ElMessage.error('加载订阅信息失败')
   } finally {
@@ -140,11 +175,21 @@ const handleRefreshToken = async () => {
   }
 }
 
-// 复制URL
-const copyUrl = async () => {
+// 复制Clash URL
+const copyClashUrl = async () => {
   try {
-    await navigator.clipboard.writeText(subscriptionUrl.value)
-    ElMessage.success('已复制到剪贴板')
+    await navigator.clipboard.writeText(clashUrl.value)
+    ElMessage.success('Clash订阅链接已复制到剪贴板')
+  } catch {
+    ElMessage.error('复制失败，请手动复制')
+  }
+}
+
+// 复制Sing-Box URL
+const copySingboxUrl = async () => {
+  try {
+    await navigator.clipboard.writeText(singboxUrl.value)
+    ElMessage.success('Sing-Box订阅链接已复制到剪贴板')
   } catch {
     ElMessage.error('复制失败，请手动复制')
   }
@@ -167,11 +212,20 @@ const loadConfig = async () => {
     return
   }
   try {
-    // 使用相对路径通过Vite代理访问后端
-    const response = await axios.get(`/sub/${token.value}`, {
-      headers: { Accept: 'application/yaml' }
-    })
-    configContent.value = response.data
+    let url = `/sub/${token.value}`
+    let headers = {}
+
+    if (previewFormat.value === 'singbox') {
+      url += '?format=singbox'
+      headers['Accept'] = 'application/json'
+    } else {
+      headers['Accept'] = 'application/yaml'
+    }
+
+    const response = await axios.get(url, { headers })
+    configContent.value = typeof response.data === 'object'
+      ? JSON.stringify(response.data, null, 2)
+      : response.data
     ElMessage.success('配置加载成功')
   } catch (err) {
     console.error('加载配置失败:', err)
